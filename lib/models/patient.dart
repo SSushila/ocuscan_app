@@ -1,4 +1,17 @@
 class Patient {
+  Patient copyWith({
+    String? id,
+    String? name,
+    String? recordNumber,
+    String? notes,
+  }) {
+    return Patient(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      recordNumber: recordNumber ?? this.recordNumber,
+      notes: notes ?? this.notes,
+    );
+  }
   final String? id;
   final String name;
   final String recordNumber;
@@ -9,7 +22,7 @@ class Patient {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'name': name,
+      'full_name': name,
       'record_number': recordNumber,
       'notes': notes,
     };
@@ -17,8 +30,8 @@ class Patient {
 
   factory Patient.fromMap(Map<String, dynamic> map) {
     return Patient(
-      id: map['id'] as int?,
-      name: map['name'] as String,
+      id: map['id']?.toString(),
+      name: map['full_name'] as String,
       recordNumber: map['record_number'] as String,
       notes: map['notes'] as String,
     );

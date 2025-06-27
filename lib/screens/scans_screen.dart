@@ -1,38 +1,95 @@
 import 'package:flutter/material.dart';
 
+import '../models/patient.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+
 class ScansScreen extends StatefulWidget {
-  const ScansScreen({super.key});
+  final Patient? patient;
+  const ScansScreen({Key? key, required this.patient}) : super(key: key);
   @override
   State<ScansScreen> createState() => _ScansScreenState();
 }
 
 class _ScansScreenState extends State<ScansScreen> {
-  // Mock patient data
-  final Map<String, String> patient = {
-    'fullName': 'Samuel Green',
-    'recordNumber': 'P123456',
-  };
+
+  // Remove mock patient data, use widget.patient
+
 
   // Simulated selected images (AssetImage paths for demo)
-  List<String> selectedImages = [];
+  List<File> selectedImages = [];
+  final ImagePicker _picker = ImagePicker();
   bool isAnalyzing = false;
 
-  void _simulatePickImage() {
-    // For demo, just add a local asset or network image
-    setState(() {
-      selectedImages.add('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=facearea&w=80&h=80');
-    });
+  Future<void> _simulatePickImage() async {
+    if (widget.patient == null) return;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Select from Gallery'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final List<XFile>? pickedFiles = await _picker.pickMultiImage();
+                  if (pickedFiles != null && pickedFiles.isNotEmpty) {
+                    setState(() {
+                      selectedImages.addAll(pickedFiles.map((xfile) => File(xfile.path)));
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.insert_drive_file),
+                title: const Text('Select from Files'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: ['jpg', 'jpeg', 'png', 'heic'],
+                    allowMultiple: true,
+                  );
+                  if (result != null && result.files.isNotEmpty) {
+                    setState(() {
+                      selectedImages.addAll(result.files
+                          .where((f) => f.path != null)
+                          .map((f) => File(f.path!)));
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: const Text('Cancel'),
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  void _simulateTakePhoto() {
-    setState(() {
-      selectedImages.add('https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=facearea&w=80&h=80');
-    });
+  Future<void> _simulateTakePhoto() async {
+    if (widget.patient == null) return;
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
+    if (pickedFile != null) {
+      setState(() {
+        selectedImages.add(File(pickedFile.path));
+      });
+    }
   }
 
-  void _removeImage(String uri) {
+  void _removeImage(File file) {
     setState(() {
-      selectedImages.remove(uri);
+      selectedImages.remove(file);
     });
   }
 
@@ -71,8 +128,40 @@ class _ScansScreenState extends State<ScansScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Upload/Images Section
+                    selectedImages.isEmpty
+                        ? _buildUploadSection(primaryBlue)
+                        : _buildImagesSection(primaryBlue),
+
+                    // --- Instructions Card ---
+                    Card(
+                      elevation: 1.5,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      color: Color(0xFFF4F8FE),
+                      margin: EdgeInsets.only(top: 18),
+                      child: Padding(
+                        padding: EdgeInsets.all(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.info_outline, color: Color(0xFF1E88E5), size: 26),
+                                SizedBox(width: 8),
+                                Text('How to Scan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1E88E5))),
+                              ],
+                            ),
+                            SizedBox(height: 10),
+                            _buildInstructionStep(Icons.person_search, 'Select the correct patient from the list.'),
+                            _buildInstructionStep(Icons.camera_alt_outlined, 'Take a retina photo or upload images.'),
+                            _buildInstructionStep(Icons.image_search_outlined, 'Review thumbnails and remove any unwanted images.'),
+                            _buildInstructionStep(Icons.analytics_outlined, 'Tap "Analyze Images" to process the scans.'),
+                          ],
+                        ),
+                      ),
+                    ),
                     Text(
                       'Retina scan for ',
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Color(0xFF1A1A1A)),
@@ -83,27 +172,17 @@ class _ScansScreenState extends State<ScansScreen> {
                         style: const TextStyle(fontSize: 18, color: Color(0xFF1A1A1A)),
                         children: [
                           TextSpan(
-                            text: patient['fullName'],
+                            text: widget.patient!.name,
                             style: const TextStyle(color: Color(0xFF1E88E5), fontWeight: FontWeight.bold),
                           ),
                           TextSpan(
-                            text: ' (Record #${patient['recordNumber']})',
+                            text: ' (Record #${widget.patient!.recordNumber})',
                             style: const TextStyle(color: Color(0xFF666666), fontWeight: FontWeight.w400),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 18),
-                    Container(
-                      height: 1,
-                      width: double.infinity,
-                      color: const Color(0xFFE0E0E0),
-                      margin: const EdgeInsets.only(bottom: 12),
-                    ),
-                    // Upload/Images Section
-                    selectedImages.isEmpty
-                        ? _buildUploadSection(primaryBlue)
-                        : _buildImagesSection(primaryBlue),
                   ],
                 ),
               ),
@@ -184,7 +263,7 @@ class _ScansScreenState extends State<ScansScreen> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
+                    child: Image.file(
                       uri,
                       width: 80,
                       height: 80,
@@ -244,4 +323,25 @@ class _ScansScreenState extends State<ScansScreen> {
       ],
     );
   }
+
+  // Helper widget for instruction steps
+  Widget _buildInstructionStep(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Color(0xFF1E88E5), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 15, color: Color(0xFF333333)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+

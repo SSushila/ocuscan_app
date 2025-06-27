@@ -14,9 +14,12 @@ import 'services/auth_service.dart';
 import 'screens/settings_screen.dart';
 import 'screens/support_screen.dart';
 import 'screens/privacy_screen.dart';
+import 'screens/education_screen.dart';
+import 'package:sqflite/sqflite.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  print('SQLite DB directory: ' + await getDatabasesPath());
   await Supabase.initialize(
     url: 'https://hinqvmahstkefyeojxzx.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpbnF2bWFoc3RrZWZ5ZW9qeHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4NTI5ODgsImV4cCI6MjA2MzQyODk4OH0.dIN5oVuB_SptZwAU-92K-ifjYkaVTpzvwbkjlejn78Y',
@@ -95,6 +98,10 @@ class OcuScanApp extends StatelessWidget {
             GoRoute(
               path: '/privacy',
               builder: (context, state) => const PrivacyScreen(),
+            ),
+            GoRoute(
+              path: '/education',
+              builder: (context, state) => const EducationScreen(),
             ),
             GoRoute(
               path: '/new-patient',

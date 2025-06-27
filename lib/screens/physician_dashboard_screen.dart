@@ -21,9 +21,9 @@ class _PhysicianDashboardScreenState extends State<PhysicianDashboardScreen> {
   static const Color primaryBlue = Color(0xFF1E88E5); // Use this for all tabs
 
 
-  final List<Widget> _screens = const [
+  final List<Widget> _screens = [
     PatientsScreen(),
-    ScansScreen(),
+    ScansScreen(patient: null),
     PhysicianDashboardTab(),
     EducationScreen(),
     SettingsScreen(),
@@ -31,6 +31,24 @@ class _PhysicianDashboardScreenState extends State<PhysicianDashboardScreen> {
 
   void _onTabTapped(int index) {
     setState(() => _selectedIndex = index);
+    // Sync GoRouter with tab selection
+    switch (index) {
+      case 0:
+        context.go('/patients');
+        break;
+      case 1:
+        context.go('/scans');
+        break;
+      case 2:
+        context.go('/physician-dashboard');
+        break;
+      case 3:
+        context.go('/education');
+        break;
+      case 4:
+        context.go('/settings');
+        break;
+    }
   }
 
   @override

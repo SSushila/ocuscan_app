@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:ocuscan_flutter/services/data_repository.dart';
+import 'package:ocuscan_flutter/services/local_db_service.dart';
+import 'package:ocuscan_flutter/services/auth_service.dart';
+import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ocuscan_flutter/services/auth_service.dart';
+import 'package:go_router/go_router.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({Key? key}) : super(key: key);
@@ -11,6 +16,9 @@ class AccountScreen extends StatefulWidget {
 }
 
 class _AccountScreenState extends State<AccountScreen> {
+  String initials = '';
+  String userId = '';
+
   bool loading = true;
   bool saving = false;
   bool showChangePassword = false;
@@ -28,92 +36,181 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _loadUser();
   }
 
-  Future<void> _loadProfile() async {
+  Future<void> _loadUser() async {
+    print('DEBUG: _loadUser() called');
     setState(() => loading = true);
     try {
       final userJson = await AuthService.getUser();
-      if (userJson == null) {
-        setState(() { loading = false; });
-        return;
+      print('DEBUG: AuthService.getUser() returned: ' + (userJson ?? 'NULL'));
+      if (userJson != null) {
+        final user = jsonDecode(userJson);
+        print('DEBUG: Decoded user map: ' + user.toString());
+        String fullName = user['full_name'] ?? '';
+        String hospitalName = user['hospital_name'] ?? '';
+        String email = user['email'] ?? '';
+        String id = user['id'] ?? '';
+        // Fallback for missing fields or id
+        if (fullName.isEmpty || hospitalName.isEmpty || id.isEmpty) {
+          try {
+            final localUser = await LocalDbService.getUserByEmail(email);
+            print('DEBUG: Local fallback user for missing fields: ' + (localUser != null ? localUser.toString() : 'NULL'));
+            if (localUser != null) {
+              if (fullName.isEmpty) fullName = localUser['full_name'] ?? '';
+              if (hospitalName.isEmpty) hospitalName = localUser['hospital_name'] ?? '';
+              if (id.isEmpty) id = localUser['id'] ?? '';
+            }
+          } catch (e) {
+            debugPrint('Failed to fallback from local DB: $e');
+          }
+        }
+        _fullNameController.text = fullName;
+        _emailController.text = email;
+        _hospitalNameController.text = hospitalName;
+        setState(() {
+          profile = user;
+          userId = id;
+          initials = fullName.isNotEmpty ? fullName.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase() : '';
+        });
+      } else {
+        // fallback: try to load from local DB if possible
+        try {
+          // Get email from Supabase Auth
+          final supabaseUser = Supabase.instance.client.auth.currentUser;
+          final email = supabaseUser?.email;
+          print('Supabase Auth email: ' + (email ?? 'NULL'));
+          if (email != null) {
+            final localUser = await LocalDbService.getUserByEmail(email);
+            print('Local user found: ' + (localUser != null ? localUser.toString() : 'NULL'));
+            if (localUser != null) {
+              _fullNameController.text = localUser['full_name'] ?? '';
+              _emailController.text = localUser['email'] ?? '';
+              _hospitalNameController.text = localUser['hospital_name'] ?? '';
+              setState(() {
+                profile = localUser;
+                userId = localUser['id'] ?? '';
+                initials = _fullNameController.text.isNotEmpty
+                    ? _fullNameController.text.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
+                    : '';
+              });
+            }
+          }
+        } catch (e) {
+          debugPrint('Failed to load user from local DB: $e');
+        }
       }
-      final user = jsonDecode(userJson);
-      setState(() {
-        profile = Map<String, dynamic>.from(user);
-        loading = false;
-      });
-      _fullNameController.text = profile!['fullName'] ?? '';
-      _emailController.text = profile!['email'] ?? '';
-      _hospitalNameController.text = profile!['hospitalName'] ?? '';
     } catch (e) {
+      debugPrint('Failed to load user: $e');
+    } finally {
       setState(() => loading = false);
     }
   }
 
   Future<void> _handleSave() async {
-    if (profile == null) return;
-    setState(() => saving = true);
+    setState(() { saving = true; });
     try {
-      profile!['fullName'] = _fullNameController.text;
-      profile!['email'] = _emailController.text;
-      profile!['hospitalName'] = _hospitalNameController.text;
-      await AuthService.saveUser(jsonEncode(profile!));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully')),
+      final id = userId;
+      final email = _emailController.text.trim();
+      final fullName = _fullNameController.text.trim();
+      final hospitalName = _hospitalNameController.text.trim();
+      print('DEBUG: Saving profile with id=$id, email=$email, fullName=$fullName, hospitalName=$hospitalName');
+      await DataRepository().updateUser(
+        id: id,
+        email: email,
+        fullName: fullName,
+        hospitalName: hospitalName,
       );
-    } catch (e) {
-      if (!mounted) return;
+      setState(() {
+        initials = fullName.isNotEmpty ? fullName.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase() : '';
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update profile')),
+        const SnackBar(content: Text('Profile updated successfully!')),
+      );
+    } catch (e, stack) {
+      print('DEBUG: Error saving profile: $e');
+      print(stack);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving profile: $e')),
       );
     } finally {
-      setState(() => saving = false);
+      setState(() { saving = false; });
     }
   }
 
   Future<void> _handleChangePassword() async {
-    setState(() { passwordError = ''; });
-    final currentPassword = _currentPasswordController.text;
-    final newPassword = _newPasswordController.text;
-    final confirmPassword = _confirmPasswordController.text;
-    if (currentPassword.isEmpty || newPassword.isEmpty || confirmPassword.isEmpty) {
-      setState(() => passwordError = 'All fields are required.');
-      return;
-    }
-    if (newPassword != confirmPassword) {
-      setState(() => passwordError = 'New passwords do not match.');
-      return;
-    }
-    if (newPassword.length < 6) {
-      setState(() => passwordError = 'Password must be at least 6 characters.');
-      return;
-    }
-    setState(() => changingPassword = true);
-    try {
-      final supabase = Supabase.instance.client;
-      final user = supabase.auth.currentUser;
-      if (user == null) throw Exception('No user logged in');
-      final updateRes = await supabase.auth.updateUser(
-        UserAttributes(password: newPassword),
-      );
-      if (updateRes.user == null) throw Exception('Password update failed');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password changed successfully')),
-      );
+    setState(() { changingPassword = true; passwordError = ''; });
+    final current = _currentPasswordController.text;
+    final newPass = _newPasswordController.text;
+    final confirm = _confirmPasswordController.text;
+    final email = _emailController.text.trim();
+    if (newPass != confirm) {
       setState(() {
-        showChangePassword = false;
-        _currentPasswordController.clear();
-        _newPasswordController.clear();
-        _confirmPasswordController.clear();
+        passwordError = 'Passwords do not match';
+        changingPassword = false;
       });
+      return;
+    }
+    if (current == newPass) {
+      setState(() {
+        passwordError = 'New password must be different from the current password.';
+        changingPassword = false;
+      });
+      return;
+    }
+    // Print debug info about Supabase Auth user and password values
+    final supabaseUser = Supabase.instance.client.auth.currentUser;
+    print('DEBUG: Supabase Auth user: ' + (supabaseUser != null ? supabaseUser.email ?? supabaseUser.id : 'NULL'));
+    print('DEBUG: currentPassword: $current, newPassword: $newPass');
+
+    // Show dialog to confirm Supabase Auth user before changing password
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Confirm Password Change'),
+          content: Text('You are changing the password for:\nEmail: \'${supabaseUser?.email ?? 'Unknown'}\'\nUser ID: \'${supabaseUser?.id ?? 'Unknown'}\'\n\nProceed?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) {
+      setState(() { changingPassword = false; });
+      return;
+    }
+    try {
+      final ok = await DataRepository().changePassword(
+        email: email,
+        newPassword: newPass,
+        currentPassword: current,
+      );
+      if (ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password updated successfully!')),
+        );
+        setState(() {
+          showChangePassword = false;
+          _currentPasswordController.clear();
+          _newPasswordController.clear();
+          _confirmPasswordController.clear();
+        });
+      } else {
+        setState(() { passwordError = 'Failed to change password. Check your current password.'; });
+      }
     } catch (e) {
-      setState(() => passwordError = 'Failed to change password.');
+      setState(() { passwordError = 'Failed to change password: $e'; });
     } finally {
-      setState(() => changingPassword = false);
+      setState(() { changingPassword = false; });
     }
   }
 
@@ -131,11 +228,18 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   Widget build(BuildContext context) {
     final primaryColor = const Color(0xFF1E88E5);
-    final initials = (profile != null && profile!['fullName'] != null && profile!['fullName'].toString().isNotEmpty)
-        ? profile!['fullName'].toString().trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
-        : '';
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 1,
+        iconTheme: const IconThemeData(color: Color(0xFF1E88E5)),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/settings'),
+        ),
+      ),
       body: loading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF1E88E5)))
           : profile == null

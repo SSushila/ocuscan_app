@@ -17,14 +17,16 @@ class _SignInScreenState extends State<SignInScreen> {
   String _email = '';
   String _password = '';
   bool _isLoading = false;
+  String _errorMessage = '';
 
   Future<void> _handleSignIn() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     _formKey.currentState!.save();
     final repo = DataRepository();
-    final result = await repo.signIn(email: _email, password: _password);
-    if (result != null) {
+    try {
+      final result = await repo.signIn(email: _email, password: _password);
+      if (result != null) {
       // Save user to AuthService for session persistence
       String userJson;
       if (result is Map<String, dynamic>) {
@@ -60,16 +62,15 @@ class _SignInScreenState extends State<SignInScreen> {
         if (context.mounted) context.go('/physician-dashboard');
       }
     } else {
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Sign In Failed'),
-            content: const Text('Invalid email or password.'),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
-          ),
-        );
-      }
+      setState(() {
+        _errorMessage = 'Invalid login credentials';
+      });
+    }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Invalid login credentials';
+      });
     }
     setState(() => _isLoading = false);
   }
@@ -118,8 +119,16 @@ class _SignInScreenState extends State<SignInScreen> {
                     key: _formKey,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (_errorMessage.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Text(
+                              _errorMessage,
+                              style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
                         const Text('OcuScan', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Color(0xFF1E88E5))),
                         const SizedBox(height: 8),
                         const Text('Sign in to your account', style: TextStyle(fontSize: 16, color: Color(0xFF666666))),

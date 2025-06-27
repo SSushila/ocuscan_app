@@ -81,9 +81,22 @@ class LocalDbService {
     return patient['id'];
   }
 
-  static Future<List<Map<String, dynamic>>> getAllPatients() async {
+  static Future<List<Map<String, dynamic>>> getAllPatients({String? where, List<Object?>? whereArgs}) async {
     final db = await database;
-    return await db.query('patients');
+    return await db.query(
+      'patients',
+      where: where,
+      whereArgs: whereArgs,
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> searchPatients(String query) async {
+    final db = await database;
+    return await db.query(
+      'patients',
+      where: 'name LIKE ? OR record_number LIKE ? OR notes LIKE ?',
+      whereArgs: ['%$query%', '%$query%', '%$query%'],
+    );
   }
 
   static Future<int> updatePatient(String id, Map<String, dynamic> patient) async {
