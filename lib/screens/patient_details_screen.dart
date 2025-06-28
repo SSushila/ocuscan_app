@@ -21,6 +21,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   late TextEditingController recordNumberController;
   late TextEditingController notesController;
 
+  // Modern color palette
+  final Color primaryBlue = const Color(0xFF2563EB);
+  final Color surfaceColor = const Color(0xFFFAFAFA);
+  final Color cardColor = Colors.white;
+  final Color secondaryBlue = const Color(0xFFEFF6FF);
+
   @override
   void initState() {
     super.initState();
@@ -36,13 +42,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     });
     try {
       // Load all patients and filter by ID
-final patients = await DataRepository().getPatients();
-Patient? loadedPatient;
-try {
-  loadedPatient = patients.map((p) => Patient.fromMap(p)).firstWhere((p) => p.id == widget.patientId);
-} catch (_) {
-  loadedPatient = null;
-}
+      final patients = await DataRepository().getPatients();
+      Patient? loadedPatient;
+      try {
+        loadedPatient = patients.map((p) => Patient.fromMap(p)).firstWhere((p) => p.id == widget.patientId);
+      } catch (_) {
+        loadedPatient = null;
+      }
       if (loadedPatient != null) {
         patient = loadedPatient;
         fullNameController.text = loadedPatient.name;
@@ -51,7 +57,12 @@ try {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to load patient details')),
+        SnackBar(
+          content: const Text('Failed to load patient details'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       );
     } finally {
       setState(() {
@@ -88,7 +99,12 @@ try {
         isEditing = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Patient details updated successfully')),
+        SnackBar(
+          content: const Text('Patient details updated successfully'),
+          backgroundColor: Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       );
     } catch (e) {
       _showError('Failed to update patient details');
@@ -97,7 +113,12 @@ try {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
     );
   }
 
@@ -111,72 +132,124 @@ try {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = const Color(0xFF1E88E5);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: surfaceColor,
       body: SafeArea(
         child: isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF1E88E5)))
+            ? Center(child: CircularProgressIndicator(color: primaryBlue, strokeWidth: 3))
             : patient == null
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
-                        const SizedBox(height: 16),
-                        const Text('Patient not found', style: TextStyle(fontSize: 18)),
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.person_off_outlined, size: 48, color: Colors.red.shade400),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Patient not found',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'The requested patient could not be located',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
                       ],
                     ),
                   )
                 : Stack(
                     children: [
                       SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const SizedBox(height: 40),
-                            // Avatar
-                            CircleAvatar(
-                              radius: 36,
-                              backgroundColor: primaryColor.withOpacity(0.1),
-                              child: Text(
-                                _getInitials(patient!.name),
-                                style: TextStyle(
-                                  color: primaryColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 28,
+                            const SizedBox(height: 60),
+                            // Modern Avatar with gradient
+                            Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [primaryBlue, primaryBlue.withOpacity(0.8)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: primaryBlue.withOpacity(0.3),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: CircleAvatar(
+                                radius: 44,
+                                backgroundColor: Colors.transparent,
+                                child: Text(
+                                  _getInitials(patient!.name),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 32,
+                                    letterSpacing: 1,
+                                  ),
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 24),
                             Text(
                               patient!.name,
                               style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1F2937),
+                                letterSpacing: -0.5,
                               ),
+                              textAlign: TextAlign.center,
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Record #${patient!.recordNumber}',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            const SizedBox(height: 32),
-                            // Info Card
+                            const SizedBox(height: 8),
                             Container(
-                              padding: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(16),
+                                color: secondaryBlue,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: primaryBlue.withOpacity(0.2)),
+                              ),
+                              child: Text(
+                                'Record #${patient!.recordNumber}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: primaryBlue,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+                            // Modern Info Card
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(28),
+                              decoration: BoxDecoration(
+                                color: cardColor,
+                                borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.03),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
@@ -185,150 +258,277 @@ try {
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(Icons.info_outline, color: primaryColor),
-                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: secondaryBlue,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Icon(Icons.person_outline, color: primaryBlue, size: 20),
+                                      ),
+                                      const SizedBox(width: 12),
                                       Text(
                                         'Patient Information',
                                         style: TextStyle(
-                                          color: primaryColor,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
+                                          color: primaryBlue,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 18,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 20),
-                                  _infoRow(
-  label: 'Full Name',
-  child: isEditing
-      ? TextField(
-          controller: fullNameController,
-          decoration: const InputDecoration(
-            hintText: "Enter patient's full name",
-          ),
-        )
-      : Text(patient!.name, style: const TextStyle(fontSize: 16)),
-),
-const SizedBox(height: 12),
-_infoRow(
-  label: 'Record Number',
-  child: isEditing
-      ? TextField(
-          controller: recordNumberController,
-          decoration: const InputDecoration(
-            hintText: "Enter patient's record number",
-          ),
-          keyboardType: TextInputType.number,
-        )
-      : Text(patient!.recordNumber, style: const TextStyle(fontSize: 16)),
-),
-const SizedBox(height: 12),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'Notes',
-                                    style: TextStyle(
-                                      color: Colors.grey[700],
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  isEditing
-                                      ? TextField(
-                                          controller: notesController,
-                                          decoration: const InputDecoration(
-                                            hintText: 'Add any additional notes',
+                                  const SizedBox(height: 32),
+                                  _modernInfoField(
+                                    label: 'Full Name',
+                                    child: isEditing
+                                        ? _modernTextField(
+                                            controller: fullNameController,
+                                            hintText: "Enter patient's full name",
+                                          )
+                                        : Text(
+                                            patient!.name,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                              color: Color(0xFF374151),
+                                            ),
                                           ),
-                                          maxLines: 4,
-                                          minLines: 2,
-                                        )
-                                      : Text(
-                                          patient!.notes?.isNotEmpty == true ? patient!.notes! : 'No notes',
-                                          style: const TextStyle(fontSize: 15, color: Colors.black87),
-                                        ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  _modernInfoField(
+                                    label: 'Record Number',
+                                    child: isEditing
+                                        ? _modernTextField(
+                                            controller: recordNumberController,
+                                            hintText: "Enter patient's record number",
+                                            keyboardType: TextInputType.number,
+                                          )
+                                        : Text(
+                                            patient!.recordNumber,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                              color: Color(0xFF374151),
+                                            ),
+                                          ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  _modernInfoField(
+                                    label: 'Notes',
+                                    child: isEditing
+                                        ? _modernTextField(
+                                            controller: notesController,
+                                            hintText: 'Add any additional notes',
+                                            maxLines: 4,
+                                            minLines: 3,
+                                          )
+                                        : Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: surfaceColor,
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: Colors.grey.shade200),
+                                            ),
+                                            child: Text(
+                                              patient!.notes?.isNotEmpty == true ? patient!.notes! : 'No notes available',
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                color: patient!.notes?.isNotEmpty == true 
+                                                    ? const Color(0xFF374151)
+                                                    : Colors.grey.shade500,
+                                                height: 1.5,
+                                              ),
+                                            ),
+                                          ),
+                                  ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 32),
-                            // Actions
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                if (isEditing) ...[
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: primaryColor,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            const SizedBox(height: 40),
+                            // Modern Action Buttons
+                            if (isEditing) ...[
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _modernButton(
+                                      onPressed: _save,
+                                      label: 'Save Changes',
+                                      icon: Icons.check_rounded,
+                                      isPrimary: true,
                                     ),
-                                    icon: const Icon(Icons.check, color: Colors.white),
-                                    label: const Text('Save Changes', style: TextStyle(color: Colors.white)),
-                                    onPressed: _save,
                                   ),
                                   const SizedBox(width: 16),
-                                  OutlinedButton.icon(
-                                    style: OutlinedButton.styleFrom(
-                                      side: BorderSide(color: primaryColor),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                  Expanded(
+                                    child: _modernButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          isEditing = false;
+                                          fullNameController.text = patient!.name;
+                                          recordNumberController.text = patient!.recordNumber;
+                                          notesController.text = patient!.notes ?? '';
+                                        });
+                                      },
+                                      label: 'Cancel',
+                                      icon: Icons.close_rounded,
+                                      isPrimary: false,
                                     ),
-                                    icon: Icon(Icons.close, color: primaryColor),
-                                    label: Text('Cancel', style: TextStyle(color: primaryColor)),
-                                    onPressed: () {
-                                      setState(() {
-                                        isEditing = false;
-                                        fullNameController.text = patient!.name;
-                                        recordNumberController.text = patient!.recordNumber;
-                                        notesController.text = patient!.notes ?? '';
-                                      });
-                                    },
-                                  ),
-                                ] else ...[
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: primaryColor,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                    ),
-                                    icon: const Icon(Icons.edit, color: Colors.white),
-                                    label: const Text('Edit Details', style: TextStyle(color: Colors.white)),
-                                    onPressed: () {
-                                      setState(() {
-                                        isEditing = true;
-                                      });
-                                    },
                                   ),
                                 ],
-                              ],
-                            ),
+                              ),
+                            ] else ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: _modernButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      isEditing = true;
+                                    });
+                                  },
+                                  label: 'Edit Details',
+                                  icon: Icons.edit_outlined,
+                                  isPrimary: true,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
-                      // Back button
+                      // Modern Back Button
                       Positioned(
-                        left: 16,
-                        top: 16,
-                        child: Material(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          elevation: 2,
-                          child: IconButton(
-                            icon: Icon(Icons.arrow_back, color: primaryColor, size: 28),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            tooltip: 'Go back',
+                        left: 20,
+                        top: 20,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () => Navigator.of(context).pop(),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                child: Icon(
+                                  Icons.arrow_back_ios_new_rounded,
+                                  color: primaryBlue,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
       ),
+    );
+  }
+
+  Widget _modernTextField({
+    required TextEditingController controller,
+    required String hintText,
+    TextInputType? keyboardType,
+    int? maxLines,
+    int? minLines,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines ?? 1,
+        minLines: minLines,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF374151),
+        ),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: TextStyle(
+            color: Colors.grey.shade500,
+            fontWeight: FontWeight.w400,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.all(16),
+        ),
+      ),
+    );
+  }
+
+  Widget _modernButton({
+    required VoidCallback onPressed,
+    required String label,
+    required IconData icon,
+    required bool isPrimary,
+  }) {
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isPrimary
+            ? [
+                BoxShadow(
+                  color: primaryBlue.withOpacity(0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isPrimary ? primaryBlue : cardColor,
+          foregroundColor: isPrimary ? Colors.white : primaryBlue,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          side: isPrimary ? null : BorderSide(color: primaryBlue, width: 1.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        icon: Icon(icon, size: 20),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _modernInfoField({required String label, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+        child,
+      ],
     );
   }
 
@@ -340,22 +540,5 @@ const SizedBox(height: 12),
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
-  }
-
-  Widget _infoRow({required String label, required Widget child}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 110,
-          child: Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(child: child),
-      ],
-    );
   }
 }

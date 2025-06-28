@@ -1,0 +1,18 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer circle with primary blue -->
+  <circle cx="100" cy="100" r="95" fill="#2563EB" stroke="#EFF6FF" stroke-width="10"/>
+  
+  <!-- Inner circle with lighter blue background -->
+  <circle cx="100" cy="100" r="70" fill="#EFF6FF" opacity="0.3"/>
+  
+  <!-- Text "OcuScan" in the center -->
+  <text x="100" y="110" text-anchor="middle" 
+        font-family="Arial, sans-serif" 
+        font-size="28" 
+        font-weight="bold" 
+        fill="white" 
+        letter-spacing="1px">OcuScan</text>
+  
+  <!-- Subtle inner shadow effect -->
+  <defs>
+    <radialGradient id="innerGlow" cx="50%" cy="30%" r="70

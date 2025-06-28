@@ -14,7 +14,12 @@ class PatientsScreen extends StatefulWidget {
 }
 
 class _PatientsScreenState extends State<PatientsScreen> {
-  final Color primaryBlue = const Color(0xFF1E88E5);
+  // Modern color scheme
+  final Color primaryBlue = const Color(0xFF2563EB);
+  final Color surfaceColor = const Color(0xFFFAFAFA);
+  final Color cardColor = Colors.white;
+  final Color secondaryBlue = const Color(0xFFEFF6FF);
+  
   List<Patient> _patients = [];
   List<Patient> _filteredPatients = [];
   bool _hasMore = true;
@@ -95,27 +100,16 @@ class _PatientsScreenState extends State<PatientsScreen> {
   Future<void> _onSearchChanged() async {
     setState(() {
       _search = _searchController.text;
-      _isLoading = true;
     });
-    final repo = DataRepository();
-    try {
-      List<dynamic> result;
-      if (_search.isEmpty) {
-        result = await repo.getPatients();
-      } else {
-        result = await repo.searchPatients(_search);
-      }
-      _patients = result.map<Patient>((p) => Patient.fromMap(p)).toList();
-      _filteredPatients = List.from(_patients);
-      _hasMore = _patients.length >= _pageSize;
-    } catch (e) {
-      _patients = [];
-      _filteredPatients = [];
+    if (_search.isEmpty) {
+      setState(() {
+        _filteredPatients = List.from(_patients);
+      });
+    } else {
+      setState(() {
+        _filteredPatients = _patients.where(_matchesSearch).toList();
+      });
     }
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   Future<void> _refreshPatients() async {
@@ -137,46 +131,95 @@ class _PatientsScreenState extends State<PatientsScreen> {
   void _showPatientActions(Map<String, String> patient) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              _buildActionTile(
+                icon: Icons.person_outline_rounded,
+                title: 'View Details',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => PatientDetailsScreen(patientId: patient['id']!),
+                    ),
+                  );
+                },
+              ),
+              _buildActionTile(
+                icon: Icons.description_outlined,
+                title: 'View Reports',
+                onTap: () {
+                  Navigator.pop(context);
+                  // Placeholder for navigation
+                },
+              ),
+              _buildActionTile(
+                icon: Icons.share_outlined,
+                title: 'Share',
+                onTap: () {
+                  Navigator.pop(context);
+                  // Placeholder for share
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
       ),
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: const Text('View Details'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => PatientDetailsScreen(patientId: patient['id']!),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: const Text('View Reports'),
-              onTap: () {
-                Navigator.pop(context);
-                // Placeholder for navigation
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.share_outlined),
-              title: const Text('Share'),
-              onTap: () {
-                Navigator.pop(context);
-                // Placeholder for share
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.close),
-              title: const Text('Cancel'),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
+    );
+  }
+
+  Widget _buildActionTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: secondaryBlue,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: primaryBlue, size: 20),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
+        onTap: onTap,
+        trailing: Icon(
+          Icons.arrow_forward_ios_rounded,
+          size: 16,
+          color: Colors.grey[400],
         ),
       ),
     );
@@ -185,205 +228,363 @@ class _PatientsScreenState extends State<PatientsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8FB),
-      appBar: AppBar(
-        backgroundColor: primaryBlue,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            context.go('/physician-dashboard');
-          },
-        ),
-        title: const Text('Patients', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-        centerTitle: true,
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: primaryBlue,
-        onPressed: () => context.go('/new-patient'),
-        tooltip: 'Add Patient',
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
-      ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Material(
-              elevation: 2,
-              borderRadius: BorderRadius.circular(30),
-              child: Container(
-                decoration: BoxDecoration(
+      backgroundColor: surfaceColor,
+      body: CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          // Modern SliverAppBar
+          SliverAppBar(
+            expandedHeight: 118,
+            floating: false,
+            pinned: true,
+            backgroundColor: primaryBlue,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_rounded),
+              onPressed: () => context.go('/physician-dashboard'),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              centerTitle: true,
+              title: const Text(
+                'Patients',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: const Color(0xFFE3EAF2), width: 1.2),
                 ),
-                child: Row(
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Icon(Icons.search, color: Color(0xFF1E88E5), size: 26),
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search patients by name or record...',
-                          hintStyle: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.w500, fontSize: 16),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: Color(0xFF1A1A1A)),
-                        cursorColor: primaryBlue,
-                      ),
-                    ),
-                    if (_search.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: GestureDetector(
-                          onTap: () {
-                            _searchController.clear();
-                            setState(() {
-                              _search = '';
-                              _filteredPatients = List.from(_patients);
-                            });
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF2F4F7),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.close, color: Color(0xFF888888), size: 20),
-                          ),
-                        ),
-                      ),
-                  ],
+              ),
+              titlePadding: const EdgeInsets.only(bottom: 16),
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      primaryBlue,
+                      primaryBlue.withOpacity(0.8),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF1E88E5)))
-                : RefreshIndicator(
-                    onRefresh: _refreshPatients,
-                    child: _filteredPatients.isEmpty
-                        ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            children: const [
-                              SizedBox(height: 120),
-                              Center(
-                                child: Text('No patient registered yet.',
-                                    style: TextStyle(fontSize: 17, color: Color(0xFF888888), fontWeight: FontWeight.w500)),
-                              ),
-                            ],
-                          )
-                        : ListView.builder(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                            itemCount: _filteredPatients.length,
-                            itemBuilder: (context, index) {
-                              final patient = _filteredPatients[index];
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                child: Material(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(14),
-                                  elevation: 0,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(14),
-                                    onTap: () {}, // Placeholder for navigation
-                                    onLongPress: () => _showPatientActions({
-                                      'id': patient.id ?? '',
-                                      'fullName': patient.name,
-                                      'recordNumber': patient.recordNumber,
-                                      'notes': patient.notes,
-                                    }),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          // Leading avatar
-                                          CircleAvatar(
-                                            radius: 22,
-                                            backgroundColor: const Color(0xFFE3F0FF),
-                                            child: Text(
-                                              (patient.name.isNotEmpty)
-                                                  ? patient.name[0]
-                                                  : '',
-                                              style: TextStyle(
-                                                  color: primaryBlue,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 20),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 14),
-                                          // Main info
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  patient.name,
-                                                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A)),
-                                                ),
-                                                const SizedBox(height: 3),
-                                                Text(
-                                                  'Record #${patient.recordNumber}',
-                                                  style: const TextStyle(fontSize: 14, color: Color(0xFF666666)),
-                                                ),
-                                                if ((patient.notes).isNotEmpty)
-                                                  Padding(
-                                                    padding: const EdgeInsets.only(top: 2),
-                                                    child: Text(
-                                                      patient.notes,
-                                                      style: const TextStyle(fontSize: 13, color: Color(0xFF888888), fontStyle: FontStyle.italic),
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                          // Actions
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              IconButton(
-                                                icon: Icon(Icons.remove_red_eye_outlined, color: primaryBlue, size: 22),
-                                                tooltip: 'Take Scan',
-                                                onPressed: () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) => ScansScreen(patient: patient),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                              IconButton(
-                                                icon: Icon(Icons.description_outlined, color: primaryBlue, size: 22),
-                                                tooltip: 'Patient Actions',
-                                                onPressed: () => _showPatientActions({
-                                                  'id': patient.id ?? '',
-                                                  'fullName': patient.name,
-                                                  'recordNumber': patient.recordNumber,
-                                                  'notes': patient.notes,
-                                                }),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+          
+          // Search section
+          SliverToBoxAdapter(
+            child: Container(
+              color: primaryBlue,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: surfaceColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                child: _buildSearchBar(),
+              ),
+            ),
+          ),
+
+          // Content
+          _isLoading
+              ? const SliverToBoxAdapter(
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: CircularProgressIndicator(),
+                    ),
                   ),
+                )
+              : _filteredPatients.isEmpty
+                  ? SliverToBoxAdapter(
+                      child: _buildEmptyState(),
+                    )
+                  : SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _buildPatientCard(_filteredPatients[index]),
+                        childCount: _filteredPatients.length,
+                      ),
+                    ),
+        ],
+      ),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [primaryBlue, primaryBlue.withOpacity(0.8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: primaryBlue.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          onPressed: () => context.go('/new-patient'),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search patients...',
+          hintStyle: TextStyle(
+            color: Colors.grey[400],
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: secondaryBlue,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.search_rounded, color: primaryBlue, size: 20),
+          ),
+          suffixIcon: _search.isNotEmpty
+              ? IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _search = '';
+                      _filteredPatients = List.from(_patients);
+                    });
+                  },
+                  icon: Icon(Icons.close_rounded, color: Colors.grey[400]),
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: secondaryBlue,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.people_outline_rounded,
+              size: 48,
+              color: primaryBlue,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'No patients found',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1F2937),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add your first patient to get started',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPatientCard(Patient patient) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PatientDetailsScreen(patientId: patient.id!),
+              ),
+            );
+          },
+          onLongPress: () => _showPatientActions({
+            'id': patient.id ?? '',
+            'fullName': patient.name,
+            'recordNumber': patient.recordNumber,
+            'notes': patient.notes,
+          }),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                // Avatar
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [primaryBlue, primaryBlue.withOpacity(0.7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Text(
+                      patient.name.isNotEmpty ? patient.name[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                
+                // Patient info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        patient.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: secondaryBlue,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'ID: ${patient.recordNumber}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: primaryBlue,
+                          ),
+                        ),
+                      ),
+                      if (patient.notes.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          patient.notes,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                
+                // Action buttons
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildActionButton(
+                      icon: Icons.remove_red_eye_outlined,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ScansScreen(patient: patient),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _buildActionButton(
+                      icon: Icons.more_vert_rounded,
+                      onPressed: () => _showPatientActions({
+                        'id': patient.id ?? '',
+                        'fullName': patient.name,
+                        'recordNumber': patient.recordNumber,
+                        'notes': patient.notes,
+                      }),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: secondaryBlue,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, color: primaryBlue, size: 20),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       ),
     );
   }

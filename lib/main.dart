@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'widgets/global_connectivity_listener.dart';
 import 'screens/account_screen.dart';
+import 'screens/scans_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/sign_in_screen.dart';
@@ -27,6 +29,8 @@ void main() async {
   await AuthService.init();
   runApp(const OcuScanApp());
 }
+
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 class OcuScanApp extends StatelessWidget {
   const OcuScanApp({super.key});
@@ -100,6 +104,10 @@ class OcuScanApp extends StatelessWidget {
               builder: (context, state) => const PrivacyScreen(),
             ),
             GoRoute(
+              path: '/scans',
+              builder: (context, state) => ScansScreen(patient: null),
+            ),
+            GoRoute(
               path: '/education',
               builder: (context, state) => const EducationScreen(),
             ),
@@ -109,15 +117,18 @@ class OcuScanApp extends StatelessWidget {
             ),
           ],
         );
-        return MaterialApp.router(
-          title: 'OcuScan',
-          theme: ThemeData(
-            primarySwatch: Colors.blue,
-            scaffoldBackgroundColor: Colors.white,
-          ),
-          routerConfig: router,
-          debugShowCheckedModeBanner: false,
-        );
+        return GlobalConnectivityListener(
+  child: MaterialApp.router(
+    scaffoldMessengerKey: rootScaffoldMessengerKey,
+    title: 'OcuScan',
+    theme: ThemeData(
+      primarySwatch: Colors.blue,
+      scaffoldBackgroundColor: Colors.white,
+    ),
+    routerConfig: router,
+    debugShowCheckedModeBanner: false,
+  ),
+);
       },
     );
   }
