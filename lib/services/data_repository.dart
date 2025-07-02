@@ -285,24 +285,33 @@ class DataRepository {
     }
   }
 
-  Future<dynamic> addScan({required String patientId, required String imagePath, required String createdAt}) async {
+  /// Saves a scan to both local SQLite and Supabase (if online).
+  /// Always saves locally for offline access. If online, also syncs to Supabase.
+  /// Returns a Map with both results: {'local': ..., 'cloud': ...}
+  Future<Map<String, dynamic>> addScan({required String patientId, required String imagePath, required String createdAt}) async {
+    // Always save locally
+    final localResult = await LocalDbService.insertScan({
+      'patient_id': patientId,
+      'image_path': imagePath,
+      'created_at': createdAt,
+    });
+
+    dynamic cloudResult;
     if (await isOnline) {
-      final response = await SupabaseService.client
-          .from('scans')
-          .insert({
-            'patient_id': patientId,
-            'image_path': imagePath,
-            'created_at': createdAt,
-          })
-          .select();
-      return response;
-    } else {
-      return await LocalDbService.insertScan({
-        'patient_id': patientId,
-        'image_path': imagePath,
-        'created_at': createdAt,
-      });
+      try {
+        cloudResult = await SupabaseService.client
+            .from('scans')
+            .insert({
+              'patient_id': patientId,
+              'image_path': imagePath,
+              'created_at': createdAt,
+            })
+            .select();
+      } catch (e) {
+        cloudResult = {'error': e.toString()};
+      }
     }
+    return {'local': localResult, 'cloud': cloudResult};
   }
 
   Future<dynamic> deleteScan(String id) async {

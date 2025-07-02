@@ -214,7 +214,20 @@ class _ScansScreenState extends State<ScansScreen> {
       final Map<String, dynamic> predictions = {};
       for (final file in selectedImages) {
         final preds = await PredictionService.instance.predictImage(file.path);
-        predictions[file.path] = preds?.predictions ?? {};
+        final predsMap = preds?.predictions ?? {};
+        predictions[file.path] = predsMap;
+        // Compute highestProb
+        double highestProb = predsMap.values.isNotEmpty
+          ? predsMap.values.map((p) => p.probability).reduce((a, b) => a > b ? a : b)
+          : 0.0;
+        // Only save if image is recognized as retina
+        if (widget.patient?.id != null && highestProb >= 0.6) {
+          await DataRepository().addScan(
+            patientId: widget.patient!.id.toString(),
+            imagePath: file.path,
+            createdAt: DateTime.now().toIso8601String(),
+          );
+        }
       }
       setState(() => isAnalyzing = false);
       if (!mounted) return;
