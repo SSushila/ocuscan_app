@@ -81,12 +81,14 @@ class LocalDbService {
     return patient['id'];
   }
 
-  static Future<List<Map<String, dynamic>>> getAllPatients({String? where, List<Object?>? whereArgs}) async {
+  static Future<List<Map<String, dynamic>>> getAllPatients({String? where, List<Object?>? whereArgs, int? limit, int? offset}) async {
     final db = await database;
     return await db.query(
       'patients',
       where: where,
       whereArgs: whereArgs,
+      limit: limit,
+      offset: offset,
     );
   }
 

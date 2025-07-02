@@ -169,15 +169,23 @@ class DataRepository {
   }
 
   // --- PATIENTS ---
-  Future<List<dynamic>> getPatients() async {
+  Future<List<dynamic>> getPatients({int page = 1, int pageSize = 10}) async {
+    final int from = (page - 1) * pageSize;
+    final int to = from + pageSize - 1;
     if (await isOnline) {
       final response = await SupabaseService.client
           .from('patients')
           .select()
-          .eq('is_deleted', false);
+          .eq('is_deleted', false)
+          .range(from, to);
       return response;
     } else {
-      final result = await LocalDbService.getAllPatients(where: 'is_deleted = ?', whereArgs: [0]);
+      final result = await LocalDbService.getAllPatients(
+        where: 'is_deleted = ?',
+        whereArgs: [0],
+        limit: pageSize,
+        offset: from,
+      );
       return result;
     }
   }
@@ -288,7 +296,7 @@ class DataRepository {
   /// Saves a scan to both local SQLite and Supabase (if online).
   /// Always saves locally for offline access. If online, also syncs to Supabase.
   /// Returns a Map with both results: {'local': ..., 'cloud': ...}
-  Future<Map<String, dynamic>> addScan({required String patientId, required String imagePath, required String createdAt}) async {
+  Future<Map<String, dynamic>> addScan({required String patientId, required String imagePath, required String createdAt, required String diagnosis, required double confidenceScore}) async {
     // Always save locally
     final localResult = await LocalDbService.insertScan({
       'patient_id': patientId,
@@ -305,6 +313,8 @@ class DataRepository {
               'patient_id': patientId,
               'image_path': imagePath,
               'created_at': createdAt,
+              'diagnosis': diagnosis,
+              'confidence_score': confidenceScore,
             })
             .select();
       } catch (e) {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/patient.dart';
+import 'dart:convert';
 import '../services/prediction_service.dart';
+import '../services/data_repository.dart';
 import 'scan_results_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_selector/file_selector.dart';
@@ -222,11 +224,37 @@ class _ScansScreenState extends State<ScansScreen> {
           : 0.0;
         // Only save if image is recognized as retina
         if (widget.patient?.id != null && highestProb >= 0.6) {
-          await DataRepository().addScan(
+          // Save the entire prediction object as JSON
+          final diagnosisJson = jsonEncode(predsMap.map((k, v) => MapEntry(k, v.probability)));
+          print('[SCAN] Saving scan for image: ${file.path}, for patientId: ${widget.patient!.id}, highestProb: $highestProb');
+          final result = await DataRepository().addScan(
             patientId: widget.patient!.id.toString(),
             imagePath: file.path,
             createdAt: DateTime.now().toIso8601String(),
+            diagnosis: diagnosisJson,
+            confidenceScore: highestProb,
           );
+          // Show feedback for each scan
+          if (!mounted) return;
+          if (result['local'] != null) {
+            print('[SCAN] Saved locally: ${result['local']}');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Scan saved locally.')),
+            );
+          } else {
+            print('[SCAN][ERROR] Failed to save locally: $result');
+          }
+          if (result['cloud'] != null && result['cloud'] is! Map<String, dynamic>) {
+            print('[SCAN] Uploaded to cloud: ${result['cloud']}');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Scan uploaded to cloud.')),
+            );
+          } else if (result['cloud'] is Map<String, dynamic> && result['cloud']['error'] != null) {
+            print('[SCAN][ERROR] Cloud upload failed: ${result['cloud']['error']}');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Cloud upload failed: ${result['cloud']['error']}')),
+            );
+          }
         }
       }
       setState(() => isAnalyzing = false);

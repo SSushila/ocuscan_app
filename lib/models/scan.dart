@@ -17,8 +17,8 @@ class Scan {
 
   factory Scan.fromMap(Map<String, dynamic> map) {
     return Scan(
-      id: map['id'] as int?,
-      patientId: map['patient_id'] as int,
+      id: map['id']?.toString(),
+      patientId: map['patient_id']?.toString() ?? '',
       imagePath: map['image_path'] as String,
       createdAt: map['created_at'] as String,
     );

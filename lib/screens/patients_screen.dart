@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/auth_service.dart';
 import '../models/patient.dart';
+import 'patient_reports_screen.dart';
 import '../services/data_repository.dart';
 import 'patient_details_screen.dart';
 import 'scans_screen.dart';
@@ -43,20 +44,23 @@ class _PatientsScreenState extends State<PatientsScreen> {
   }
 
   Future<void> _fetchPatients() async {
-    setState(() { _isLoading = true; });
-    try {
-      final repo = DataRepository();
-      final result = await repo.getPatients();
-      _patients = result.map<Patient>((p) => Patient.fromMap(p)).toList();
-      _filteredPatients = List.from(_patients);
-      _hasMore = _patients.length >= _pageSize;
-    } catch (e) {
-      _patients = [];
-      _filteredPatients = [];
-    }
-    if (!mounted) return;
-    setState(() { _isLoading = false; });
+  setState(() { _isLoading = true; });
+  _currentPage = 1;
+  try {
+    final repo = DataRepository();
+    final result = await repo.getPatients(page: _currentPage, pageSize: _pageSize);
+    final newPatients = result.map<Patient>((p) => Patient.fromMap(p)).toList();
+    _patients = newPatients;
+    _filteredPatients = List.from(_patients);
+    _hasMore = newPatients.length >= _pageSize;
+  } catch (e) {
+    _patients = [];
+    _filteredPatients = [];
+    _hasMore = false;
   }
+  if (!mounted) return;
+  setState(() { _isLoading = false; });
+}
 
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 && !_isLoadingMore && _hasMore && !_isLoading) {
@@ -65,21 +69,25 @@ class _PatientsScreenState extends State<PatientsScreen> {
   }
 
   Future<void> _loadMorePatients() async {
-    if (_isLoadingMore || !_hasMore) return;
-    setState(() => _isLoadingMore = true);
-    try {
-      final repo = DataRepository();
-      final result = await repo.getPatients();
-      final newPatients = result.map<Patient>((p) => Patient.fromMap(p)).toList();
-      if (newPatients.length < _pageSize) _hasMore = false;
-      _patients = newPatients;
+  if (_isLoadingMore || !_hasMore) return;
+  setState(() => _isLoadingMore = true);
+  try {
+    final repo = DataRepository();
+    final nextPage = _currentPage + 1;
+    final result = await repo.getPatients(page: nextPage, pageSize: _pageSize);
+    final newPatients = result.map<Patient>((p) => Patient.fromMap(p)).toList();
+    if (newPatients.length < _pageSize) _hasMore = false;
+    if (newPatients.isNotEmpty) {
+      _currentPage = nextPage;
+      _patients.addAll(newPatients);
       _filteredPatients = _patients.where(_matchesSearch).toList();
-    } catch (e) {
-      _hasMore = false;
     }
-    if (!mounted) return;
-    setState(() => _isLoadingMore = false);
+  } catch (e) {
+    _hasMore = false;
   }
+  if (!mounted) return;
+  setState(() => _isLoadingMore = false);
+}
 
   bool _matchesSearch(Patient p) {
     final name = p.name.toLowerCase();
@@ -113,15 +121,16 @@ class _PatientsScreenState extends State<PatientsScreen> {
   }
 
   Future<void> _refreshPatients() async {
-    setState(() => _isRefreshing = true);
-    if (_search.isEmpty) {
-      await _fetchPatients();
-    } else {
-      await _onSearchChanged();
-    }
-    if (!mounted) return;
-    setState(() => _isRefreshing = false);
+  setState(() => _isRefreshing = true);
+  _currentPage = 1;
+  if (_search.isEmpty) {
+    await _fetchPatients();
+  } else {
+    await _onSearchChanged();
   }
+  if (!mounted) return;
+  setState(() => _isRefreshing = false);
+}
 
   Future<void> _signOut() async {
     await AuthService.deleteUser();
@@ -168,7 +177,16 @@ class _PatientsScreenState extends State<PatientsScreen> {
                 title: 'View Reports',
                 onTap: () {
                   Navigator.pop(context);
-                  // Placeholder for navigation
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => PatientReportsScreen(
+                        patientId: patient['id']!,
+                        patientName: patient['full_name'] ?? patient['fullName'] ?? patient['name'] ?? '',
+                        recordNumber: patient['recordNumber'] ?? patient['record_number'] ?? '',
+                        notes: patient['notes'] ?? '',
+                      ),
+                    ),
+                  );
                 },
               ),
               _buildActionTile(
@@ -305,6 +323,14 @@ class _PatientsScreenState extends State<PatientsScreen> {
                         childCount: _filteredPatients.length,
                       ),
                     ),
+          // Show loading indicator at bottom when loading more
+          if (_isLoadingMore)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
         ],
       ),
       floatingActionButton: Container(
