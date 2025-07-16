@@ -4,6 +4,10 @@
 
 It includes user authentication, onboarding flows, patient management features, and integration with a backend prediction API. All screens and logic have been redesigned for a responsive and consistent Flutter experience.
 
+This code is originally authored by Samuel (whom I worked together in this project), who has the public version of the project listed below.
+
+https://github.com/samlobeng/ocuscan_v2
+
 ---
 
 ## ✨ Features
