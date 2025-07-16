@@ -10,7 +10,7 @@ https://github.com/samlobeng/ocuscan_v2
 
 ---
 
-## ✨ Features
+##  Features
 
 - 🔐 Sign In / Sign Up  
 - 👋 Onboarding for first-time users  
@@ -21,9 +21,9 @@ https://github.com/samlobeng/ocuscan_v2
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
-### 1. 📲 Set Up the Flutter App
+### 1. Set Up the Flutter App
 
 > ⚠️ Note: This repository excludes the Android build folder and the backend model file (`best_vit_model.pth`) to reduce size. Please follow the steps below to reinitialize both components locally.
 
